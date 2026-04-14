@@ -1,10 +1,10 @@
 {
 	"name": "jsoncurrent",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Parse streamed JSON data incrementally.",
-	"homepage": "https://github.com/richardantao/jsonpulse-js#readme",
+	"homepage": "https://github.com/richardantao/jsoncurrent-js#readme",
 	"bugs": {
-		"url": "https://github.com/richardantao/jsonpulse-js/issues"
+		"url": "https://github.com/richardantao/jsoncurrent-js/issues"
 	},
 	"type": "module",
 	"exports": {
@@ -71,7 +71,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/richardantao/jsonpulse-js.git"
+		"url": "git+https://github.com/richardantao/jsoncurrent-js.git"
 	},
 	"publishConfig": {
 		"access": "public"

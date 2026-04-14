@@ -122,7 +122,7 @@ export interface UseJsonPulseReturn<T> {
 // ---------------------------------------------------------------------------
 
 /**
- * React hook for consuming a jsonpulse patch stream.
+ * React hook for consuming a jsoncurrent patch stream.
  *
  * Wraps a Collector instance, exposing `consume` and `complete` for your
  * transport layer to call, and `data`/`status` for your component to render.
@@ -132,7 +132,7 @@ export interface UseJsonPulseReturn<T> {
  * @example Basic SSE usage
  * ```tsx
  * function ReportGenerator({ documentId }: { documentId: string }) {
- *   const { data, status, consume, complete, reset } = useJsonPulse<ReportDocument>();
+ *   const { data, status, consume, complete, reset } = useJsonCurrent<ReportDocument>();
  *
  *   useEffect(() => {
  *     reset();
@@ -157,7 +157,7 @@ export interface UseJsonPulseReturn<T> {
  *
  * @example With middleware
  * ```tsx
- * const { data, consume, complete } = useJsonPulse<ReportDocument>({
+ * const { data, consume, complete } = useJsonCurrent<ReportDocument>({
  *   middleware: [
  *     // Mirror summary → originalSummary as it streams
  *     (patch, next) => {
@@ -171,7 +171,7 @@ export interface UseJsonPulseReturn<T> {
  * });
  * ```
  */
-export function useJsonPulse<T = unknown>(
+export function useJsonCurrent<T = unknown>(
 	options: UseJsonPulseOptions<T> = {},
 ): UseJsonPulseReturn<T> {
 	const [data, setData] = useState<Partial<T>>({});
