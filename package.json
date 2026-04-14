@@ -1,6 +1,6 @@
 {
-	"name": "jsonpulse",
-	"version": "0.1.0",
+	"name": "jsoncurrent",
+	"version": "0.0.0",
 	"description": "Parse streamed JSON data incrementally.",
 	"homepage": "https://github.com/richardantao/jsonpulse-js#readme",
 	"bugs": {
