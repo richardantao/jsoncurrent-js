@@ -1,0 +1,75 @@
+{
+	"name": "jsondelta",
+	"version": "0.1.0",
+	"description": "Transport-agnostic patch protocol for streaming incremental JSON.",
+	"homepage": "https://github.com/richardantao/jsondelta-js#readme",
+	"bugs": {
+		"url": "https://github.com/richardantao/jsondelta-js/issues"
+	},
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./react": {
+			"import": "./dist/react/index.js",
+			"types": "./dist/react/index.d.ts"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"changeset": "changeset",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"prepublishOnly": "pnpm build && pnpm test && pnpm typecheck",
+		"release": "pnpm publish --access public --provenance --no-git-checks",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit",
+		"version-packages": "changeset version"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "latest",
+		"@changesets/cli": "^2.30.0",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/react": "^16.3.2",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"jsdom": "^29.0.2",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5",
+		"typescript": "^6.0.2",
+		"vitest": "^4.1.4"
+	},
+	"peerDependencies": {
+		"react": ">=19.0.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		}
+	},
+	"keywords": [
+		"json",
+		"streaming",
+		"llm",
+		"parser",
+		"patch",
+		"sse",
+		"structured-output"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/richardantao/jsondelta-js.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
