@@ -1,6 +1,5 @@
 ---
-title: v0.3.0
-description: change event now includes path and op metadata.
+"jsoncurrent": minor
 ---
 
 # v0.3.0
