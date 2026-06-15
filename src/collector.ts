@@ -18,7 +18,7 @@ import {
  * @example
  * const collector = new Collector<ReportDocument>();
  *
- * collector.on('change', (state) => setReport(state));
+ * collector.on('change', (state, path, op) => setReport(state));
  * collector.on('complete', (final) => save(final));
  *
  * // Feed chunks from your transport
@@ -179,7 +179,7 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 
 		// Emit a shallow clone so React setState always receives a new reference.
 		this._state = { ...this.working } as Partial<T>;
-		this.emit("change", this._state);
+		this.emit("change", this._state, path, op);
 	}
 
 	/**

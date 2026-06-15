@@ -59,9 +59,10 @@ export type MiddlewareFn = (
 export interface CollectorEvents<T> {
 	/**
 	 * Fires on every data patch (`add`, `append`, `insert`) with the current
-	 * partially-assembled state.
+	 * partially-assembled state, the path that was just patched, and the op
+	 * that was applied.
 	 */
-	change: (state: Partial<T>) => void;
+	change: (state: Partial<T>, path: string, op: Op) => void;
 
 	/**
 	 * Fires once when the stream ends with the fully assembled object.

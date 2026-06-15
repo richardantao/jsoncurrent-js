@@ -179,6 +179,8 @@ describe("useJsonCurrent — callbacks", () => {
 		expect(onChange).toHaveBeenCalledTimes(2);
 		expect(onChange).toHaveBeenLastCalledWith(
 			expect.objectContaining({ title: "Hello!" }),
+			"title",
+			"append",
 		);
 	});
 

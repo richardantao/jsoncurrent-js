@@ -136,7 +136,7 @@ import { Collector } from 'jsoncurrent';
 
 const collector = new Collector<Report>();
 
-collector.on('change', (state) => renderReport(state));
+collector.on('change', (state, path, op) => renderReport(state));
 collector.on('complete', (final) => save(final));
 
 // Path lifecycle — show skeletons as sections start, replace when complete
@@ -221,7 +221,7 @@ collector.complete(): void                      // signal end of stream
 collector.reset(): this                         // reset state, preserve middleware + listeners
 collector.value: Partial<T>                     // current partially-assembled state
 
-collector.on('change',       (state: Partial<T>) => void)
+collector.on('change',       (state: Partial<T>, path: string, op: Op) => void)
 collector.on('complete',     (state: T) => void)
 collector.on('pathstart',    (path: string, value: unknown) => void)
 collector.on('pathcomplete', (path: string, value: unknown) => void)

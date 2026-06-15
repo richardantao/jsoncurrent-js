@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { Collector } from "../collector";
-import type { MiddlewareFn, StreamingChunk } from "../types";
+import type { MiddlewareFn, Op, StreamingChunk } from "../types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,10 +31,11 @@ export interface UseJsonCurrentOptions<T> {
 	middleware?: MiddlewareFn[];
 
 	/**
-	 * Called on every patch application with the latest assembled partial state.
+	 * Called on every patch application with the latest assembled partial state,
+	 * the path that was just patched, and the op that was applied.
 	 * Equivalent to listening to the Collector's 'change' event.
 	 */
-	onChange?: (state: Partial<T>) => void;
+	onChange?: (state: Partial<T>, path: string, op: Op) => void;
 
 	/**
 	 * Called once when the stream ends with the fully assembled object.
@@ -185,9 +186,11 @@ export function useJsonCurrent<T = unknown>(
 	const onComplete = useEffectEvent((state: T) => {
 		options.onComplete?.(state);
 	});
-	const onChange = useEffectEvent((state: Partial<T>) => {
-		options.onChange?.(state);
-	});
+	const onChange = useEffectEvent(
+		(state: Partial<T>, path: string, op: Op) => {
+			options.onChange?.(state, path, op);
+		},
+	);
 	const onError = useEffectEvent((err: Error) => {
 		options.onError?.(err);
 	});
@@ -212,9 +215,9 @@ export function useJsonCurrent<T = unknown>(
 			collector.use(fn);
 		});
 
-		collector.on("change", (state) => {
+		collector.on("change", (state, path, op) => {
 			setData(state);
-			onChange(state);
+			onChange(state, path, op);
 		});
 
 		collector.on("pathstart", (path, value) => {

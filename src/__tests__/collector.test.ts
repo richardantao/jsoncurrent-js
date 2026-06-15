@@ -101,7 +101,11 @@ describe("Collector", () => {
 		c.consume({ path: "title", value: "Hello", op: "add" });
 		c.consume({ path: "title", value: " World", op: "append" });
 		expect(onChange).toHaveBeenCalledTimes(2);
-		expect(onChange).toHaveBeenLastCalledWith({ title: "Hello World" });
+		expect(onChange).toHaveBeenLastCalledWith(
+			{ title: "Hello World" },
+			"title",
+			"append",
+		);
 	});
 
 	it("emits complete with final state", () => {
@@ -150,7 +154,7 @@ describe("Collector middleware", () => {
 		c.use((patch, next) => next(patch));
 		c.on("change", onChange);
 		c.consume({ path: "title", value: "Hello", op: "add" });
-		expect(onChange).toHaveBeenCalledWith({ title: "Hello" });
+		expect(onChange).toHaveBeenCalledWith({ title: "Hello" }, "title", "add");
 	});
 
 	it("can drop a patch", () => {
