@@ -33,6 +33,20 @@ export interface StreamingChunk {
 }
 
 /**
+ * Optional callback used by the Collector to yield between queued patch flushes.
+ *
+ * Keep this environment-specific at the call site:
+ * - Browser: `() => new Promise(requestAnimationFrame)`
+ * - Node: `() => new Promise((resolve) => setTimeout(resolve, 0))`
+ */
+export type FlushFn = () => void | Promise<void>;
+
+/** Options used to configure Collector behavior. */
+export interface CollectorOptions {
+	flush?: FlushFn;
+}
+
+/**
  * Middleware function signature.
  *
  * Receives the current patch and a `next` callback.

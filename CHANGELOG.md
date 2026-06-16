@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- Optional collector flush pacing API:
+  - New `flush` option on `Collector` via `CollectorOptions`
+  - New exported types: `FlushFn`, `CollectorOptions`
+- Optional `flush` option on `useJsonCurrent` to pass pacing behavior through to `Collector`
+- Flush semantics when `flush` is provided:
+  - Pace only `change` event emission
+  - Keep `pathstart`, `pathcomplete`, and `error` immediate (not flush-paced)
+  - Run middleware on queued chunks before patch application
+  - Drain queued `change` events immediately before stream `complete`
+
+### Changed
+
+- React hook internals no longer use `useEffectEvent`; callbacks now use ref + `useEffect` syncing for pre-React-19 compatibility
+- React peer dependency range widened to `>=16.8.0`
+
+### Migration
+
+No breaking API changes.
+
+To opt into paced `change` emissions, pass `flush`:
+
+```typescript
+import { Collector } from "jsoncurrent";
+
+// Browser
+const collector = new Collector({
+	flush: () => new Promise(requestAnimationFrame),
+});
+
+// Node
+const collectorNode = new Collector({
+	flush: () => new Promise((resolve) => setTimeout(resolve, 0)),
+});
+```
+
+---
+
 ## 0.3.0
 
 ### Changed

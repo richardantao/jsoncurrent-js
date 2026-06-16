@@ -502,3 +502,45 @@ describe("useJsonCurrent — streaming simulation", () => {
 		expect(result.current.status).toBe("complete");
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Flush callback
+// ---------------------------------------------------------------------------
+
+describe("useJsonCurrent — flush callback", () => {
+	it("flushes queued patches incrementally when flush is provided", async () => {
+		const gates: Array<() => void> = [];
+		const flush = vi.fn(
+			() => new Promise<void>((resolve) => gates.push(resolve)),
+		);
+
+		const { result } = renderHook(() =>
+			useJsonCurrent<{ title: string }>({ flush }),
+		);
+
+		act(() => {
+			result.current.consume(patch("title", "A", "add"));
+			result.current.consume(patch("title", "B", "append"));
+			result.current.consume(patch("title", "C", "append"));
+		});
+
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		expect(result.current.data.title).toBe("A");
+		expect(flush).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			gates[0]?.();
+			await Promise.resolve();
+		});
+		expect(result.current.data.title).toBe("AB");
+
+		await act(async () => {
+			gates[1]?.();
+			await Promise.resolve();
+		});
+		expect(result.current.data.title).toBe("ABC");
+	});
+});

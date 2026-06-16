@@ -1,13 +1,7 @@
-import {
-	useCallback,
-	useEffect,
-	useEffectEvent,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Collector } from "../collector";
-import type { MiddlewareFn, Op, StreamingChunk } from "../types";
+import type { FlushFn, MiddlewareFn, Op, StreamingChunk } from "../types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +23,18 @@ export interface UseJsonCurrentOptions<T> {
 	 * }]
 	 */
 	middleware?: MiddlewareFn[];
+
+	/**
+	 * Optional callback used by the Collector to yield between incremental patch
+	 * flushes when multiple chunks are queued.
+	 *
+	 * Keep this environment-specific at the call site:
+	 * - Browser: `() => new Promise(requestAnimationFrame)`
+	 * - Node: `() => new Promise((resolve) => setTimeout(resolve, 0))`
+	 *
+	 * When omitted, chunk application remains synchronous (existing behavior).
+	 */
+	flush?: FlushFn;
 
 	/**
 	 * Called on every patch application with the latest assembled partial state,
@@ -183,33 +189,28 @@ export function useJsonCurrent<T = unknown>(
 
 	// Middleware is only applied when a Collector is first created.
 	const middlewareRef = useRef(options?.middleware);
-	const onComplete = useEffectEvent((state: T) => {
-		options.onComplete?.(state);
-	});
-	const onChange = useEffectEvent(
-		(state: Partial<T>, path: string, op: Op) => {
-			options.onChange?.(state, path, op);
-		},
-	);
-	const onError = useEffectEvent((err: Error) => {
-		options.onError?.(err);
-	});
-	const onPathStart = useEffectEvent((path: string, value: unknown) => {
-		options.onPathStart?.(path, value);
-	});
-	const onPathComplete = useEffectEvent((path: string, value: unknown) => {
-		options.onPathComplete?.(path, value);
-	});
+	const flushRef = useRef(options?.flush);
+	const onCompleteRef = useRef(options.onComplete);
+	const onChangeRef = useRef(options.onChange);
+	const onErrorRef = useRef(options.onError);
+	const onPathStartRef = useRef(options.onPathStart);
+	const onPathCompleteRef = useRef(options.onPathComplete);
 
 	useEffect(() => {
 		middlewareRef.current = options.middleware;
+		flushRef.current = options.flush;
+		onCompleteRef.current = options.onComplete;
+		onChangeRef.current = options.onChange;
+		onErrorRef.current = options.onError;
+		onPathStartRef.current = options.onPathStart;
+		onPathCompleteRef.current = options.onPathComplete;
 	});
 
 	// Initialise Collector once.
 	const getCollector = useCallback((): Collector<T> => {
 		if (collectorRef.current) return collectorRef.current;
 
-		const collector = new Collector<T>();
+		const collector = new Collector<T>({ flush: flushRef.current });
 
 		middlewareRef.current?.forEach((fn) => {
 			collector.use(fn);
@@ -217,25 +218,25 @@ export function useJsonCurrent<T = unknown>(
 
 		collector.on("change", (state, path, op) => {
 			setData(state);
-			onChange(state, path, op);
+			onChangeRef.current?.(state, path, op);
 		});
 
 		collector.on("pathstart", (path, value) => {
-			onPathStart(path, value);
+			onPathStartRef.current?.(path, value);
 		});
 
 		collector.on("pathcomplete", (path, value) => {
-			onPathComplete(path, value);
+			onPathCompleteRef.current?.(path, value);
 		});
 
 		collector.on("complete", (final) => {
 			setStatus("complete");
-			onComplete(final);
+			onCompleteRef.current?.(final);
 		});
 
 		collector.on("error", (err) => {
 			setStatus("error");
-			onError(err);
+			onErrorRef.current?.(err);
 		});
 
 		collectorRef.current = collector;
@@ -250,9 +251,10 @@ export function useJsonCurrent<T = unknown>(
 				collector.consume(chunk);
 			} catch (err) {
 				setStatus("error");
-				onError(err instanceof Error ? err : new Error(String(err)));
+				onErrorRef.current?.(
+					err instanceof Error ? err : new Error(String(err)),
+				);
 			}
-			// eslint-disable-next-line react-hooks/exhaustive-deps
 		},
 		[status, getCollector],
 	);

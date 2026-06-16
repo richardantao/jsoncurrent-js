@@ -2,8 +2,11 @@ import { TypedEmitter } from "./base";
 import { getPath, setPath } from "./path";
 import {
 	type CollectorEvents,
+	type CollectorOptions,
+	type FlushFn,
 	JsonCurrentError,
 	type MiddlewareFn,
+	type Op,
 	type StreamingChunk,
 } from "./types";
 
@@ -44,6 +47,17 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 	private _isComplete = false;
 	// Tracks paths that have received their first patch — used to fire pathstart once
 	private seenPaths = new Set<string>();
+	private readonly flush?: FlushFn;
+	private chunkQueue: StreamingChunk[] = [];
+	private processingChunks = false;
+	private changeQueue: Array<[Partial<T>, string, Op]> = [];
+	private drainingChanges = false;
+	private changeDrainScheduled = false;
+
+	constructor(options: CollectorOptions = {}) {
+		super();
+		this.flush = options.flush;
+	}
 
 	// -------------------------------------------------------------------------
 	// Middleware
@@ -75,7 +89,70 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 			);
 		}
 
-		this.runMiddleware(chunk, (patched) => this.applyPatch(patched));
+		this.chunkQueue.push(chunk);
+		this.processChunkQueue();
+	}
+
+	private processChunkQueue(): void {
+		if (this.processingChunks) return;
+		this.processingChunks = true;
+
+		try {
+			while (this.chunkQueue.length > 0) {
+				const next = this.chunkQueue.shift();
+				if (!next) continue;
+				this.runMiddleware(next, (patched) => this.applyPatch(patched));
+			}
+		} finally {
+			this.processingChunks = false;
+		}
+	}
+
+	private scheduleChangeDrain(): void {
+		if (!this.flush || this.changeDrainScheduled) return;
+		this.changeDrainScheduled = true;
+		void Promise.resolve().then(() => {
+			this.changeDrainScheduled = false;
+			void this.drainChangeQueue();
+		});
+	}
+
+	private async drainChangeQueue(): Promise<void> {
+		if (this.drainingChanges) return;
+		this.drainingChanges = true;
+
+		try {
+			while (this.changeQueue.length > 0) {
+				const next = this.changeQueue.shift();
+				if (!next) continue;
+				const [state, path, op] = next;
+				this.emit("change", state, path, op);
+
+				if (this.changeQueue.length > 0) {
+					try {
+						await this.flush?.();
+					} catch (err) {
+						const error =
+							err instanceof JsonCurrentError
+								? err
+								: new JsonCurrentError("Flush callback failed", err);
+						this.emit("error", error);
+					}
+				}
+			}
+		} finally {
+			this.drainingChanges = false;
+			if (this.changeQueue.length > 0) {
+				this.scheduleChangeDrain();
+			}
+		}
+	}
+
+	private drainChangeQueueNow(): void {
+		const queued = this.changeQueue.splice(0);
+		for (const [state, path, op] of queued) {
+			this.emit("change", state, path, op);
+		}
 	}
 
 	/**
@@ -85,6 +162,12 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 	complete(): void {
 		if (this._isComplete) return;
 		this._isComplete = true;
+
+		if (this.changeQueue.length > 0) {
+			this.changeDrainScheduled = false;
+			this.drainChangeQueueNow();
+		}
+
 		this.emit("complete", this._state as T);
 	}
 
@@ -114,6 +197,11 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 		this._state = {};
 		this._isComplete = false;
 		this.seenPaths.clear();
+		this.chunkQueue = [];
+		this.processingChunks = false;
+		this.changeQueue = [];
+		this.drainingChanges = false;
+		this.changeDrainScheduled = false;
 		return this;
 	}
 
@@ -179,7 +267,14 @@ export class Collector<T = unknown> extends TypedEmitter<CollectorEvents<T>> {
 
 		// Emit a shallow clone so React setState always receives a new reference.
 		this._state = { ...this.working } as Partial<T>;
-		this.emit("change", this._state, path, op);
+
+		if (!this.flush) {
+			this.emit("change", this._state, path, op);
+			return;
+		}
+
+		this.changeQueue.push([this._state, path, op]);
+		this.scheduleChangeDrain();
 	}
 
 	/**

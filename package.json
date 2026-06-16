@@ -1,6 +1,6 @@
 {
 	"name": "jsoncurrent",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Parse streamed JSON data incrementally.",
 	"homepage": "https://jsoncurrent.com",
 	"bugs": {
@@ -54,7 +54,7 @@
 		"vitest": "^4.1.4"
 	},
 	"peerDependencies": {
-		"react": ">=19.0.0"
+		"react": ">=16.8.0"
 	},
 	"peerDependenciesMeta": {
 		"react": {

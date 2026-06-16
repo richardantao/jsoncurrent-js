@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Collector } from "../collector";
-import { parsePath, getPath, setPath } from "../path";
+import { getPath, parsePath, setPath } from "../path";
 import type { StreamingChunk } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ describe("Collector", () => {
 	it("each change event carries a new object reference", () => {
 		const refs: object[] = [];
 		const c = make();
-		c.on("change", s => refs.push(s as object));
+		c.on("change", (s) => refs.push(s as object));
 		c.consume({ path: "title", value: "A", op: "add" });
 		c.consume({ path: "title", value: "B", op: "append" });
 		expect(refs[0]).not.toBe(refs[1]);
@@ -171,7 +171,7 @@ describe("Collector middleware", () => {
 	it("can transform a patch", () => {
 		const c = new Collector();
 		c.use((patch, next) =>
-			next({ ...patch, value: (patch.value as string).toUpperCase() })
+			next({ ...patch, value: (patch.value as string).toUpperCase() }),
 		);
 		c.consume({ path: "title", value: "hello", op: "add" });
 		expect(c.value).toEqual({ title: "HELLO" });
@@ -233,5 +233,77 @@ describe("Collector — nested streaming simulation", () => {
 			title: "Cell Bio",
 			cards: [{ term: "Mitosis" }, { term: "Meiosis" }],
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Collector — flush callback
+// ---------------------------------------------------------------------------
+
+describe("Collector — flush callback", () => {
+	it("applies queued patches incrementally when flush is provided", async () => {
+		const gates: Array<() => void> = [];
+		const flush = vi.fn(
+			() => new Promise<void>((resolve) => gates.push(resolve)),
+		);
+		const seen: string[] = [];
+
+		const c = new Collector<{ title: string }>({ flush });
+		c.on("change", (state) => {
+			seen.push((state.title ?? "") as string);
+		});
+
+		c.consume({ path: "title", value: "A", op: "add" });
+		c.consume({ path: "title", value: "B", op: "append" });
+		c.consume({ path: "title", value: "C", op: "append" });
+
+		expect(c.value).toEqual({ title: "ABC" });
+
+		await Promise.resolve();
+
+		expect(seen).toEqual(["A"]);
+		expect(flush).toHaveBeenCalledTimes(1);
+
+		gates[0]?.();
+		await Promise.resolve();
+
+		expect(seen).toEqual(["A", "AB"]);
+		expect(flush).toHaveBeenCalledTimes(2);
+
+		gates[1]?.();
+		await Promise.resolve();
+
+		expect(seen).toEqual(["A", "AB", "ABC"]);
+	});
+
+	it("drains queued changes immediately before complete", async () => {
+		const gates: Array<() => void> = [];
+		const flush = vi.fn(
+			() => new Promise<void>((resolve) => gates.push(resolve)),
+		);
+		const onComplete = vi.fn();
+		const onChange = vi.fn();
+
+		const c = new Collector<{ title: string }>({ flush });
+		c.on("complete", onComplete);
+		c.on("change", onChange);
+
+		c.consume({ path: "title", value: "A", op: "add" });
+		c.consume({ path: "title", value: "B", op: "append" });
+		await Promise.resolve();
+		expect(onChange).toHaveBeenCalledTimes(1);
+		expect(onComplete).not.toHaveBeenCalled();
+
+		c.complete();
+
+		expect(onChange).toHaveBeenCalledTimes(2);
+		expect(onChange).toHaveBeenLastCalledWith(
+			{ title: "AB" },
+			"title",
+			"append",
+		);
+		expect(onComplete).toHaveBeenCalledOnce();
+		expect(onComplete).toHaveBeenCalledWith({ title: "AB" });
+		expect(c.isComplete).toBe(true);
 	});
 });
